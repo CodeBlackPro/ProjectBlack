@@ -18,48 +18,56 @@
     <div id="feedback-panel"></div>
     <pre id="output-container"></pre>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        const supabaseUrl = 'https://duxyhokarzqpzgqpvzwv.supabase.co'
+        const supabasePublishableKey = 'sb_publishable_gZnAJV4cZ481p1cz23JPAw_TqOiOOiX';
+
+        const supabase = window.supabase.createClient(supabaseUrl, supabasePublishableKey);
+
+        supabase.auth.getSession().then(({ data, error }) => {
+            if(error) {
+                console.error('Supabase init error:', error);
+            } else {
+                console.log('Supabase ready. User:', data.session?.user?.id ?? null);
+            }
+        })
         
         const questionElement = document.getElementById('question');
         const buttonContainer = document.getElementById('button-container');
         const solutionContainer = document.getElementById('solution-container');
         const outputContainer = document.getElementById('output-container');
         const runButton = document.getElementById('run-button');
+        const lessonContainer = document.getElementById('lesson-container');
 
-        const lessons = [
-            {
-                title: 'Print Function',
-                questions: [
-                    {
-                        question: "Call a blank print function",
-                        tokens: ['print', '(', 'PRINT',  ')', '{', '}', 'Print'],
-                        solution: 'print()'
-                    },
-                    {
-                        question: "Call a print function with a string",
-                        tokens: ['print', '(', '"Hello, World!"',  ')', '{', '}', 'Print', 'PRINT'],
-                        solution: 'print("Hello, World!")'
-                    }
+        async function fetchLessons() {
+            const { data, error } = await supabase
+            .from('lessons')
+            .select('id, title, sort_order, created_at')
+            .order('sort_order', { ascending: true });
 
-                ]
-            },
-            {
-                title: 'Creating a variable',
-                questions: [
-                    {
-                        question: "Create a integer variable",
-                        tokens: ['x ', '= ', '1',  ')', '(', '}', 'print'],
-                        solution: 'x = 1'
-                    },
-                    {
-                        question: "Create a string variable",
-                        tokens: ['carName ', '= ', '"Honda"',  ')', '{', '}', 'Print', 'PRINT'],
-                        solution: 'carName = "Honda"'
-                    }
-
-                ]
+            if(error) {
+                console.error('lessons select error:', error);
+                return[];
             }
-        ]
+            console.log('lessons:', data);
+            return data;
+
+        }
+
+        async function loadLessons() {
+            lessonContainer.innerHTML = '';
+            const rows = await fetchLessons();
+            rows.forEach((row) => {
+                const lessonButton = document.createElement('button');
+                lessonButton.textContent = row.title;
+                lessonButton.addEventListener('click', () => {
+
+                });
+                lessonContainer.appendChild(lessonButton);
+            });
+        }
+        loadLessons();
         
         let lessonIndex = 0;
         let questionIndex = 0;
@@ -98,8 +106,7 @@
             }
         });
 
-        function loadLessons() {
-            const lessonContainer = document.getElementById('lesson-container');
+        /*function loadLessons() {
             lessons.forEach((lesson, index) => {
                 const lessonButton = document.createElement('button');
                 lessonButton.textContent = lesson.title;
@@ -111,7 +118,7 @@
                 lessonContainer.appendChild(lessonButton);
 
             });
-        }
+        }*/
 
         function updateQuestion() {
             questionElement.textContent = lessons[lessonIndex].questions[questionIndex].question;
@@ -125,8 +132,6 @@
                 button.addEventListener('click', () => { runButton.disabled = solutionContainer.children.length === 0; });
             });
         }
-
-        loadLessons();
 
 
     </script>
