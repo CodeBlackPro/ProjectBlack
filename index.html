@@ -9,6 +9,8 @@
     </style>
 </head>
 <body>
+    <div>Navigation</div>
+    <div id="lesson-container"></div>
     <p id="question">Question</p>
     <div id="solution-container"></div>
     <div id="button-container"></div>
@@ -24,31 +26,53 @@
         const outputContainer = document.getElementById('output-container');
         const runButton = document.getElementById('run-button');
 
-        
-        const question = [
+        const lessons = [
             {
-                question: "Call a blank print function",
-                tokens: ['print', '(', 'PRINT',  ')', '{', '}', 'Print'],
-                solution: 'print()'
+                title: 'Print Function',
+                questions: [
+                    {
+                        question: "Call a blank print function",
+                        tokens: ['print', '(', 'PRINT',  ')', '{', '}', 'Print'],
+                        solution: 'print()'
+                    },
+                    {
+                        question: "Call a print function with a string",
+                        tokens: ['print', '(', '"Hello, World!"',  ')', '{', '}', 'Print', 'PRINT'],
+                        solution: 'print("Hello, World!")'
+                    }
+
+                ]
             },
             {
-                question: "Call a print function with a string",
-                tokens: ['print', '(', '"Hello, World!"',  ')', '{', '}', 'Print', 'PRINT'],
-                solution: 'print("Hello, World!")'
+                title: 'Creating a variable',
+                questions: [
+                    {
+                        question: "Create a integer variable",
+                        tokens: ['x ', '= ', '1',  ')', '(', '}', 'print'],
+                        solution: 'x = 1'
+                    },
+                    {
+                        question: "Create a string variable",
+                        tokens: ['carName ', '= ', '"Honda"',  ')', '{', '}', 'Print', 'PRINT'],
+                        solution: 'carName = "Honda"'
+                    }
+
+                ]
             }
         ]
         
-        let currentIndex = 0;
+        let lessonIndex = 0;
+        let questionIndex = 0;
         
         const pyodidePromise = loadPyodide();
 
         runButton.addEventListener('click', async () => {
             if (runButton.textContent === 'Continue') {
-                if (currentIndex === question.length - 1) {
+                if (questionIndex === lessons[lessonIndex].questions.length - 1) {
                     console.log('You have completed the quiz');
                     return;
                 }
-                currentIndex++;
+                questionIndex++;
                 updateQuestion();
                 runButton.textContent = 'Run';
                 return;
@@ -65,7 +89,7 @@
                 }
     
                 const feedbackPanel = document.getElementById('feedback-panel');
-                if (code === question[currentIndex].solution) {
+                if (code === lessons[lessonIndex].questions[questionIndex].solution) {
                     feedbackPanel.textContent = 'Correct!';
                 } else {
                     feedbackPanel.textContent = 'Incorrect!';
@@ -74,11 +98,26 @@
             }
         });
 
+        function loadLessons() {
+            const lessonContainer = document.getElementById('lesson-container');
+            lessons.forEach((lesson, index) => {
+                const lessonButton = document.createElement('button');
+                lessonButton.textContent = lesson.title;
+                lessonButton.addEventListener('click', () => {
+                    lessonIndex = index;
+                    questionIndex = 0;
+                    updateQuestion();
+                });
+                lessonContainer.appendChild(lessonButton);
+
+            });
+        }
+
         function updateQuestion() {
-            questionElement.textContent = question[currentIndex].question;
+            questionElement.textContent = lessons[lessonIndex].questions[questionIndex].question;
             buttonContainer.innerHTML = '';
             solutionContainer.innerHTML = '';
-            question[currentIndex].tokens.forEach((token) => {
+            lessons[lessonIndex].questions[questionIndex].tokens.forEach((token) => {
                 const button = document.createElement('button');
                 button.textContent = token;
                 button.addEventListener('click', () => (button.parentElement === solutionContainer ? buttonContainer : solutionContainer).appendChild(button));
@@ -87,7 +126,7 @@
             });
         }
 
-        updateQuestion();
+        loadLessons();
 
 
     </script>
