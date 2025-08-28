@@ -1,1 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #solution-container {border: 1px solid #ccc; min-height: 100px;}
+    </style>
+</head>
+<body>
+    <p id="question">Question</p>
+    <div id="solution-container"></div>
+    <div id="button-container"></div>
+    <button id="run-button" disabled>Run</button>
+    <div id="feedback-panel"></div>
+    <pre id="output-container"></pre>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <script>
+        
+        const questionElement = document.getElementById('question');
+        const buttonContainer = document.getElementById('button-container');
+        const solutionContainer = document.getElementById('solution-container');
+        const outputContainer = document.getElementById('output-container');
+        const runButton = document.getElementById('run-button');
 
+        
+        const question = [
+            {
+                question: "Call a blank print function",
+                tokens: ['print', '(', 'PRINT',  ')', '{', '}', 'Print'],
+                solution: 'print()'
+            },
+            {
+                question: "Call a print function with a string",
+                tokens: ['print', '(', '"Hello, World!"',  ')', '{', '}', 'Print', 'PRINT'],
+                solution: 'print("Hello, World!")'
+            }
+        ]
+        
+        let currentIndex = 0;
+        
+        const pyodidePromise = loadPyodide();
+
+        runButton.addEventListener('click', async () => {
+            if (runButton.textContent === 'Continue') {
+                if (currentIndex === question.length - 1) {
+                    console.log('You have completed the quiz');
+                    return;
+                }
+                currentIndex++;
+                updateQuestion();
+                runButton.textContent = 'Run';
+                return;
+            } else {
+                const pyodide = await pyodidePromise;
+                outputContainer.textContent = 'Running...';
+                const code = Array.from(solutionContainer.querySelectorAll('button')).map(b => b.textContent).join('');
+                try {
+                    pyodide.globals.set('code', code);
+                    const result = await pyodide.runPythonAsync(`import sys, io\nbuf = io.StringIO()\n_stdout, _stderr = sys.stdout, sys.stderr\nsys.stdout = sys.stderr = buf\ntry:\n    exec(code, {})\nfinally:\n    sys.stdout, sys.stderr = _stdout, _stderr\nbuf.getvalue()`);
+                    outputContainer.textContent = result || '(no output)';
+                } catch (e) {
+                    outputContainer.textContent = String(e);
+                }
+    
+                const feedbackPanel = document.getElementById('feedback-panel');
+                if (code === question[currentIndex].solution) {
+                    feedbackPanel.textContent = 'Correct!';
+                } else {
+                    feedbackPanel.textContent = 'Incorrect!';
+                }
+                runButton.textContent = 'Continue';
+            }
+        });
+
+        function updateQuestion() {
+            questionElement.textContent = question[currentIndex].question;
+            buttonContainer.innerHTML = '';
+            solutionContainer.innerHTML = '';
+            question[currentIndex].tokens.forEach((token) => {
+                const button = document.createElement('button');
+                button.textContent = token;
+                button.addEventListener('click', () => (button.parentElement === solutionContainer ? buttonContainer : solutionContainer).appendChild(button));
+                buttonContainer.appendChild(button);
+                button.addEventListener('click', () => { runButton.disabled = solutionContainer.children.length === 0; });
+            });
+        }
+
+        updateQuestion();
+
+
+    </script>
+</body>
+</html>
