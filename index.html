@@ -20,10 +20,24 @@
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+
+        //Supabase
         const supabaseUrl = 'https://duxyhokarzqpzgqpvzwv.supabase.co'
         const supabasePublishableKey = 'sb_publishable_gZnAJV4cZ481p1cz23JPAw_TqOiOOiX';
 
         const supabase = window.supabase.createClient(supabaseUrl, supabasePublishableKey);
+        
+        const questionElement = document.getElementById('question');
+        const buttonContainer = document.getElementById('button-container');
+        const solutionContainer = document.getElementById('solution-container');
+        const outputContainer = document.getElementById('output-container');
+        const runButton = document.getElementById('run-button');
+        const lessonContainer = document.getElementById('lesson-container');
+
+        let lessonIndex = 0;
+        let questionIndex = 0;
+        let currentQuestions = [];
+        const questionsByLesson = new Map();
 
         supabase.auth.getSession().then(({ data, error }) => {
             if(error) {
@@ -33,28 +47,22 @@
             }
         })
         
-        const questionElement = document.getElementById('question');
-        const buttonContainer = document.getElementById('button-container');
-        const solutionContainer = document.getElementById('solution-container');
-        const outputContainer = document.getElementById('output-container');
-        const runButton = document.getElementById('run-button');
-        const lessonContainer = document.getElementById('lesson-container');
-
+        
         async function fetchLessons() {
             const { data, error } = await supabase
             .from('lessons')
             .select('id, title, sort_order, created_at')
             .order('sort_order', { ascending: true });
-
+            
             if(error) {
                 console.error('lessons select error:', error);
                 return[];
             }
             console.log('lessons:', data);
             return data;
-
+            
         }
-
+        
         async function loadLessons() {
             lessonContainer.innerHTML = '';
             const rows = await fetchLessons();
@@ -62,15 +70,41 @@
                 const lessonButton = document.createElement('button');
                 lessonButton.textContent = row.title;
                 lessonButton.addEventListener('click', () => {
-
+                    loadQuestions(row.id);
                 });
                 lessonContainer.appendChild(lessonButton);
             });
         }
+
+        async function fetchQuestions(lessonId) {
+            const { data, error } = await supabase
+            .from('questions')
+            .select('id, lesson_id, prompt, tokens, solution, sort_order, created_at')
+            .eq('lesson_id', lessonId)
+            .order('sort_order', { ascending: true });
+
+            if(error) {
+                console.error('question select error:', error);
+                return [];
+            } else {
+                console.log('questions:', data);
+                return data;
+            }
+        }
+
+        async function loadQuestions(lessonId) {
+           questionIndex = 0;
+           runButton.disabled = true;
+           const cached = questionsByLesson.get(lessonId);
+           if(cached) { currentQuestions = cached; return; }
+           const questionSet = await fetchQuestions(lessonId);
+           questionsByLesson.set(lessonId, questionSet);
+           currentQuestions = questionSet;
+        }
+
         loadLessons();
+
         
-        let lessonIndex = 0;
-        let questionIndex = 0;
         
         const pyodidePromise = loadPyodide();
 
@@ -106,19 +140,6 @@
             }
         });
 
-        /*function loadLessons() {
-            lessons.forEach((lesson, index) => {
-                const lessonButton = document.createElement('button');
-                lessonButton.textContent = lesson.title;
-                lessonButton.addEventListener('click', () => {
-                    lessonIndex = index;
-                    questionIndex = 0;
-                    updateQuestion();
-                });
-                lessonContainer.appendChild(lessonButton);
-
-            });
-        }*/
 
         function updateQuestion() {
             questionElement.textContent = lessons[lessonIndex].questions[questionIndex].question;
